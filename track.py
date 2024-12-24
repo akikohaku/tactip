@@ -199,7 +199,7 @@ while True:
     # 显示结果
     # 绘制网格，中心加1层
     img = np.ones((450, 600, 3), dtype=np.uint8) * 125
-    draw_hex_grid_left(img, (125, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions)
+    draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions)
 
 # 显示结果
     cv2.imshow("Rotated Hexagonal Grid", img)

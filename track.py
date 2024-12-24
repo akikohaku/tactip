@@ -187,11 +187,13 @@ while True:
             label,
             (int(x_next) - 10, int(y_next) + 10),  # 调整文本位置
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,  # 字体大小
+            0.5,  # 字体大小
             (0, 0, 0),  # 黑色文本
             1,  # 文本粗细
-            lineType=cv2.LINE_AA
-        )
+            lineType=cv2.LINE_AA)
+        if status[i] == 0:  # 如果追踪失败
+            # 恢复到初始位置
+            next_positions[i] = initial_positions[i]
 
     # 更新当前标记点位置
     current_positions = next_positions.copy()

@@ -4,7 +4,7 @@ import math
 
 # 打开相机
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_EXPOSURE, -10)  # 曝光 -4
+cap.set(cv2.CAP_PROP_EXPOSURE, -10)  # 曝光
 
 
 
@@ -58,19 +58,19 @@ def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_pos
             rotated_hexagon = rotate_hexagon(hexagon, (cx, cy), rotation_angle)
             x_initial, y_initial = initial_positions[count]
             x_current, y_current = current_positions[count]
-            cv2.fillPoly(img, [rotated_hexagon], color=(0, 0, min(255,int(((x_initial-x_current)**2+(y_initial-y_current)**2)))))  # 绿色填充
+            cv2.fillPoly(img, [rotated_hexagon], color=(255, 255 -min(255,int(20*math.sqrt((y_initial-y_current)**2))),255- min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
             cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
             count+=1
     for i in range(6):  # 每层六边形环
         for j in range(layers*2-2-i):
                 # 计算当前六边形的中心
             cx = int(center_1[0] + j  * offset_x+ radius*math.sin( math.radians(120))*(i-5))
-            cy = int(center_1[1]+radius*10+math.sin( math.radians(30))*radius + i * math.sin( math.radians(120)) * offset_y )
+            cy = int(center_1[1]+radius*10+math.sin( math.radians(30))*radius-1 + i * math.sin( math.radians(120)) * offset_y )
             hexagon = generate_hexagon((cx, cy), radius)
             rotated_hexagon = rotate_hexagon(hexagon, (cx, cy), rotation_angle)
             x_initial, y_initial = initial_positions[count]
             x_current, y_current = current_positions[count]
-            cv2.fillPoly(img, [rotated_hexagon], color=(0, 0, min(255,int(((x_initial-x_current)**2+(y_initial-y_current)**2)))))  # 绿色填充
+            cv2.fillPoly(img, [rotated_hexagon], color=(255, 255- min(255,int(20*math.sqrt((y_initial-y_current)**2))), 255-min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
             cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
             count+=1
 
@@ -110,12 +110,13 @@ def sort_hexagonal_grid(positions, epsilon=1e-1):
     return np.array(sorted_positions)
 
 
+
 # 用于保存标记点的初始和当前状态
 initial_positions = None
 current_positions = None
 
 # 光流参数
-lk_params = dict(winSize=(15, 15),
+lk_params = dict(winSize=(21, 21),
                  maxLevel=2,
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
@@ -152,8 +153,8 @@ while True:
     # 执行旋转
     frame = cv2.warpAffine(frame, rotation_matrix, (new_w, new_h))
 
-    alpha = 2  # 对比度值（1.0-3.0之间调整）
-    beta = 0    # 亮度值（-100到100之间调整）
+    alpha = 3  # 对比度值（1.0-3.0之间调整）
+    beta = -20    # 亮度值（-100到100之间调整）
     frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta)
     
     # 转换为灰度图像
@@ -165,6 +166,7 @@ while True:
         _, binary_frame = cv2.threshold(gray_frame, 100, 255, cv2.THRESH_BINARY)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_OPEN, kernel)  # 开运算去噪点
+        binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
         binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
 
         # 连通域分析
@@ -185,10 +187,10 @@ while True:
         prev_gray = gray_frame.copy()
         continue
 
-    # 使用光流法计算当前标记点的位置
+
     next_positions, status, error = cv2.calcOpticalFlowPyrLK(prev_gray, gray_frame, current_positions, None, **lk_params)
 
-    # 更新上一帧图像
+        # 更新上一帧图像
     prev_gray = gray_frame.copy()
 
     # 创建白色背景图像

@@ -166,8 +166,8 @@ while True:
     height, width, _ = frame.shape
 
     # 定义裁剪区域 (y1:y2, x1:x2)
-    x1, y1 = 160, 90  # 左上角 (x, y)
-    x2, y2 = 510, 400  # 右下角 (x, y)
+    x1, y1 = 175, 70  # 左上角 (x, y)
+    x2, y2 = 525, 420  # 右下角 (x, y)
 
     # 确保裁剪区域在帧范围内
     x1, x2 = max(0, x1), min(width, x2)
@@ -179,6 +179,7 @@ while True:
     alpha = 3  # 对比度值（1.0-3.0之间调整）
     beta = -20    # 亮度值（-100到100之间调整）
     frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta)
+
     
     # 转换为灰度图像
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -273,9 +274,19 @@ while True:
     draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions,Track_lost)
 
 # 显示结果
-    cv2.imshow("Rotated Hexagonal Grid", img)
-    cv2.imshow('Original', frame)
-    cv2.imshow('Tracked Changes', marked_points_image)
+    # 创建一个大画布来显示多个图像
+    canvas_height = max(img.shape[0], frame.shape[0], marked_points_image.shape[0])
+    canvas_width = img.shape[1] + frame.shape[1] +marked_points_image.shape[1]
+    canvas = np.ones((canvas_height, canvas_width, 3), dtype=np.uint8) * 255
+
+    # 将图像放置在画布上
+    canvas[:img.shape[0], :img.shape[1]] = img
+    canvas[:frame.shape[0], img.shape[1]:img.shape[1] + frame.shape[1]] = frame
+    canvas[:marked_points_image.shape[0],img.shape[1] + frame.shape[1]:] = marked_points_image
+
+    # 显示画布
+    cv2.imshow("Combined View", canvas)
+
 
     # 按下 'r' 键重置初始状态
     if cv2.waitKey(1) == ord('r'):

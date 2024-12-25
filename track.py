@@ -4,6 +4,7 @@ import math
 
 # 打开相机
 cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_EXPOSURE, -10)  # 曝光 -4
 
 
 
@@ -124,10 +125,37 @@ prev_gray = None
 while True:
     # 读取帧
     ret, frame = cap.read()
+    
     if not ret:
         print("无法接收帧")
         break
 
+        # 获取帧的宽度和高度
+    (h, w) = frame.shape[:2]
+    center = (w // 2, h // 2)  # 图像中心点
+
+    # 生成旋转矩阵（旋转30度，缩放比例1.0）
+    angle = 3
+    scale = 1.0
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale)
+
+    # 计算旋转后的图像尺寸以避免裁剪
+    cos = np.abs(rotation_matrix[0, 0])
+    sin = np.abs(rotation_matrix[0, 1])
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+
+    # 调整旋转矩阵以考虑图像的中心移动
+    rotation_matrix[0, 2] += (new_w / 2) - center[0]
+    rotation_matrix[1, 2] += (new_h / 2) - center[1]
+
+    # 执行旋转
+    frame = cv2.warpAffine(frame, rotation_matrix, (new_w, new_h))
+
+    alpha = 2  # 对比度值（1.0-3.0之间调整）
+    beta = 0    # 亮度值（-100到100之间调整）
+    frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta)
+    
     # 转换为灰度图像
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -135,6 +163,9 @@ while True:
     if initial_positions is None:
         # 转换为二值图像
         _, binary_frame = cv2.threshold(gray_frame, 100, 255, cv2.THRESH_BINARY)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_OPEN, kernel)  # 开运算去噪点
+        binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
 
         # 连通域分析
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_frame, connectivity=8)
@@ -143,7 +174,7 @@ while True:
         initial_positions = []
         for i in range(1, num_labels):  # 跳过背景（标签 0）
             area = stats[i, cv2.CC_STAT_AREA]
-            if area > 5 and area < 100:
+            if area > 3 and area < 100:
                 center_x, center_y = int(centroids[i][0]), int(centroids[i][1])
                 initial_positions.append([center_x, center_y])
         
@@ -187,7 +218,7 @@ while True:
             label,
             (int(x_next) - 10, int(y_next) + 10),  # 调整文本位置
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,  # 字体大小
+            0.3,  # 字体大小
             (0, 0, 0),  # 黑色文本
             1,  # 文本粗细
             lineType=cv2.LINE_AA)

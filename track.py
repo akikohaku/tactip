@@ -47,8 +47,13 @@ if not cap.isOpened():
     exit()
 
 # 绘制六边形网格
-def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_positions,current_positions):
+def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_positions,current_positions,Track_lost):
     count=0
+    # if number of current_positions is less than the number of initial_positions, stop drawing and show error label
+    if len(initial_positions)<127:
+        cv2.putText(img, 'Tracking Failed', (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        return
+    
     for i in range(7):  # 每层六边形环
         for j in range(layers+i):
                 # 计算当前六边形的中心
@@ -73,6 +78,9 @@ def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_pos
             cv2.fillPoly(img, [rotated_hexagon], color=(255, 255- min(255,int(20*math.sqrt((y_initial-y_current)**2))), 255-min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
             cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
             count+=1
+    if Track_lost:
+        cv2.putText(img, 'Tracking Lost', (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+
 
 
 def sort_hexagonal_grid(positions, epsilon=1e-1):
@@ -131,6 +139,8 @@ while True:
         print("无法接收帧")
         break
 
+
+
         # 获取帧的宽度和高度
     (h, w) = frame.shape[:2]
     center = (w // 2, h // 2)  # 图像中心点
@@ -152,6 +162,19 @@ while True:
 
     # 执行旋转
     frame = cv2.warpAffine(frame, rotation_matrix, (new_w, new_h))
+
+    height, width, _ = frame.shape
+
+    # 定义裁剪区域 (y1:y2, x1:x2)
+    x1, y1 = 160, 90  # 左上角 (x, y)
+    x2, y2 = 510, 400  # 右下角 (x, y)
+
+    # 确保裁剪区域在帧范围内
+    x1, x2 = max(0, x1), min(width, x2)
+    y1, y2 = max(0, y1), min(height, y2)
+
+    # 裁剪图像
+    frame = frame[y1:y2, x1:x2]
 
     alpha = 3  # 对比度值（1.0-3.0之间调整）
     beta = -20    # 亮度值（-100到100之间调整）
@@ -187,6 +210,19 @@ while True:
         prev_gray = gray_frame.copy()
         continue
 
+    Track_lost=False
+
+    _, binary_frame = cv2.threshold(gray_frame, 100, 255, cv2.THRESH_BINARY)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_OPEN, kernel)  # 开运算去噪点
+    binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
+    binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
+
+    # 连通域分析
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_frame, connectivity=8)
+
+    if num_labels-1!=len(initial_positions):
+        Track_lost=True
 
     next_positions, status, error = cv2.calcOpticalFlowPyrLK(prev_gray, gray_frame, current_positions, None, **lk_params)
 
@@ -234,7 +270,7 @@ while True:
     # 显示结果
     # 绘制网格，中心加1层
     img = np.ones((450, 600, 3), dtype=np.uint8) * 125
-    draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions)
+    draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions,Track_lost)
 
 # 显示结果
     cv2.imshow("Rotated Hexagonal Grid", img)

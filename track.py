@@ -47,7 +47,7 @@ if not cap.isOpened():
     exit()
 
 # 绘制六边形网格
-def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_positions,current_positions,Track_lost):
+def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_positions,current_positions,Track_lost,status):
     count=0
     # if number of current_positions is less than the number of initial_positions, stop drawing and show error label
     if len(initial_positions)<127:
@@ -63,8 +63,12 @@ def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_pos
             rotated_hexagon = rotate_hexagon(hexagon, (cx, cy), rotation_angle)
             x_initial, y_initial = initial_positions[count]
             x_current, y_current = current_positions[count]
-            cv2.fillPoly(img, [rotated_hexagon], color=(255, 255 -min(255,int(20*math.sqrt((y_initial-y_current)**2))),255- min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
-            cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
+            if status[count]:
+                cv2.fillPoly(img, [rotated_hexagon], color=(255, 255 -min(255,int(20*math.sqrt((y_initial-y_current)**2))),255- min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
+                cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
+            else:
+                cv2.fillPoly(img, [rotated_hexagon], color=(0, 0,0))  # 绿色填充
+                cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
             count+=1
     for i in range(6):  # 每层六边形环
         for j in range(layers*2-2-i):
@@ -75,11 +79,15 @@ def draw_hex_grid_left(img, center_1, radius, layers, rotation_angle,initial_pos
             rotated_hexagon = rotate_hexagon(hexagon, (cx, cy), rotation_angle)
             x_initial, y_initial = initial_positions[count]
             x_current, y_current = current_positions[count]
-            cv2.fillPoly(img, [rotated_hexagon], color=(255, 255- min(255,int(20*math.sqrt((y_initial-y_current)**2))), 255-min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
-            cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
+            if status[count]:
+                cv2.fillPoly(img, [rotated_hexagon], color=(255, 255 -min(255,int(20*math.sqrt((y_initial-y_current)**2))),255- min(255,int(20*math.sqrt((x_initial-x_current)**2)))))  # 绿色填充
+                cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
+            else:
+                cv2.fillPoly(img, [rotated_hexagon], color=(0, 0,0))  # 绿色填充
+                cv2.polylines(img, [rotated_hexagon], isClosed=True, color=(0, 0, 0), thickness=2)
             count+=1
     if Track_lost:
-        cv2.putText(img, 'Tracking Lost', (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        cv2.putText(img, 'Tracking Lost', (5, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
 
 
@@ -222,7 +230,7 @@ while True:
     # 连通域分析
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_frame, connectivity=8)
 
-    if num_labels-1!=len(initial_positions):
+    if num_labels-1<len(initial_positions):
         Track_lost=True
 
     next_positions, status, error = cv2.calcOpticalFlowPyrLK(prev_gray, gray_frame, current_positions, None, **lk_params)
@@ -271,7 +279,7 @@ while True:
     # 显示结果
     # 绘制网格，中心加1层
     img = np.ones((450, 600, 3), dtype=np.uint8) * 125
-    draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions,Track_lost)
+    draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions,Track_lost,status)
 
 # 显示结果
     # 创建一个大画布来显示多个图像

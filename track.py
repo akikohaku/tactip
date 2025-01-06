@@ -185,7 +185,7 @@ while True:
     frame = frame[y1:y2, x1:x2]
 
     alpha = 3  # 对比度值（1.0-3.0之间调整）
-    beta = -20    # 亮度值（-100到100之间调整）
+    beta = 10    # 亮度值（-100到100之间调整）
     frame = cv2.convertScaleAbs(frame, alpha=alpha, beta=beta)
 
     
@@ -234,6 +234,21 @@ while True:
         Track_lost=True
 
     next_positions, status, error = cv2.calcOpticalFlowPyrLK(prev_gray, gray_frame, current_positions, None, **lk_params)
+
+    #将next_positions的位置设置为最近的centroids中心位置
+    for i in range(len(next_positions)):
+        if status[i]:
+            min_distance=1000000
+            point=0
+            for j in range(1, num_labels):
+                distance=math.sqrt((centroids[j][0]-next_positions[i][0])**2+(centroids[j][1]-next_positions[i][1])**2)
+                if distance<min_distance:
+                    min_distance=distance
+                    point=j
+            next_positions[i]=centroids[point]
+                    
+
+
 
         # 更新上一帧图像
     prev_gray = gray_frame.copy()

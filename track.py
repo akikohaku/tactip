@@ -195,7 +195,7 @@ while True:
     # 初始化标记点
     if initial_positions is None:
         # 转换为二值图像
-        _, binary_frame = cv2.threshold(gray_frame, 100, 255, cv2.THRESH_BINARY)
+        _, binary_frame = cv2.threshold(gray_frame, 110, 255, cv2.THRESH_BINARY)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_OPEN, kernel)  # 开运算去噪点
         binary_frame = cv2.morphologyEx(binary_frame, cv2.MORPH_CLOSE, kernel)  # 闭运算填补小孔
@@ -277,22 +277,17 @@ while True:
     current_positions = next_positions.copy()
 
     # 显示结果
-    # 绘制网格，中心加1层
     img = np.ones((450, 600, 3), dtype=np.uint8) * 125
     draw_hex_grid_left(img, (175, 60), hex_radius, 7, rotation_angle,initial_positions,current_positions,Track_lost,status)
 
-# 显示结果
-    # 创建一个大画布来显示多个图像
+
     canvas_height = max(img.shape[0], frame.shape[0], marked_points_image.shape[0])
     canvas_width = img.shape[1] + frame.shape[1] +marked_points_image.shape[1]
     canvas = np.ones((canvas_height, canvas_width, 3), dtype=np.uint8) * 255
-
-    # 将图像放置在画布上
     canvas[:img.shape[0], :img.shape[1]] = img
     canvas[:frame.shape[0], img.shape[1]:img.shape[1] + frame.shape[1]] = frame
     canvas[:marked_points_image.shape[0],img.shape[1] + frame.shape[1]:] = marked_points_image
 
-    # 显示画布
     cv2.imshow("Combined View", canvas)
 
 
